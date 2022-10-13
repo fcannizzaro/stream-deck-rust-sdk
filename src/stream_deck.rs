@@ -50,6 +50,8 @@ impl StreamDeck {
     }
 
     pub async fn set_title(&self, context: String, title: Option<String>) {
+        #[cfg(feature = "logging")]
+        println!(" > set_title: {:?}", title);
         self.send(set_title(context, title, None, None)).await;
     }
 
@@ -64,6 +66,8 @@ impl StreamDeck {
     }
 
     pub async fn set_image_b64(&self, context: String, base64: Option<String>) {
+        #[cfg(feature = "logging")]
+        println!(" > set_image: {:?}", base64);
         self.send(set_image(context, base64, None, None)).await;
     }
 
@@ -119,7 +123,6 @@ impl StreamDeck {
         &self,
         settings: GlobalSettings,
     ) {
-        println!("set_global_settings {}", self.args.info.plugin.uuid.clone());
         self.send(set_global_settings(self.args.plugin_uuid.clone(), settings))
             .await;
         self.send(get_global_settings_event(self.args.plugin_uuid.clone()))

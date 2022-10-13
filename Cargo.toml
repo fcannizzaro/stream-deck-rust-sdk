@@ -30,4 +30,6 @@ base64 = { version = "0.13", optional = true }
 [features]
 images = ["base64"]
 download = ["hyper", "hyper-tls"]
+logging = []
 default = []
+

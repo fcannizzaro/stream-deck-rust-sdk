@@ -4,9 +4,10 @@ Unofficial Elgato Stream Deck SDK for Rust
 > This is a work in progress project! (_also my first Rust project_)
 
 # Features
-- `default`: contains the base sdk
-- `download`: contains an utility function to download images using hyper
-- `images`: contains an utility function to convert images' bytes to a base64 string
+- `default` contains the base functions
+- `download` contains an utility function to download images using hyper
+- `images` contains an utility function to convert images' bytes to a base64 string
+- `logging` enable the debug logging
 
 # Todo
 - [ ] Add examples

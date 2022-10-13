@@ -49,7 +49,9 @@ pub async fn init() -> (
 
     let (ws, _r) = connect_async(url.clone()).await.expect("cannot connect");
 
+    #[cfg(feature = "logging")]
     println!(" > connected");
+
     let (tx, rx) = futures::channel::mpsc::unbounded();
     let stream_deck = StreamDeck::new(args.clone(), tx.clone());
 
@@ -70,6 +72,7 @@ pub async fn connect(
 
     stream_deck.clone().register().await;
 
+    #[cfg(feature = "logging")]
     println!(" > plugin registered");
 
     let ws_read = ws_r
@@ -77,6 +80,7 @@ pub async fn connect(
             let msg = r_msg.expect("read error");
             let data = msg.into_text().unwrap();
 
+            #[cfg(feature = "logging")]
             println!("Received: {}", data);
 
             let input: InputEvent = serde_json::from_str(&data).unwrap();
@@ -169,10 +173,10 @@ pub async fn connect(
     tokio::pin!(ws_read, fwd_to_ws);
 
     tokio::select! {
-        _ = ws_read => println!("ws_read done"),
+        _ = ws_read => println!("done"),
         fwd_r = fwd_to_ws => {
              match fwd_r {
-                 Ok(_) => println!("no error."),
+                 Ok(_) => println!("no error"),
                  Err(e) => println!("error: {}", e),
              }
         }

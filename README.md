@@ -7,7 +7,7 @@ Unofficial Elgato Stream Deck SDK for Rust
 - `default` contains the base functions
 - `download` contains an utility function to download images using hyper
 - `images` contains an utility function to convert images' bytes to a base64 string
-- `logging` enable the debug logging
+- `logging` enables the debug logging
 
 # Todo
 - [ ] Add examples

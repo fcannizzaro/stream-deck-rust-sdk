@@ -2,8 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use futures_channel::mpsc::UnboundedReceiver;
-use futures_util::FutureExt;
-use futures_util::StreamExt;
+use futures_util::{FutureExt, StreamExt};
 use serde::de::value::MapDeserializer;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};

@@ -140,7 +140,7 @@ impl StreamDeck {
         self.send(get_settings_event(context)).await;
     }
 
-    pub async fn update_global_settings(&self, settings: HashMap<String, Value>) {
+    pub(crate) async fn update_global_settings(&self, settings: HashMap<String, Value>) {
         let mut locked = self.global_settings.lock().await;
         locked.clear();
         settings.iter().for_each(|(k, v)| {

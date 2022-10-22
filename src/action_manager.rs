@@ -1,5 +1,6 @@
-use crate::Action;
 use std::collections::HashMap;
+
+use crate::Action;
 
 pub struct ActionManager {
     pub(crate) actions: HashMap<String, Box<dyn Action>>,

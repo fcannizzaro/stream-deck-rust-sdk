@@ -137,7 +137,7 @@ pub struct DidReceiveSettingsEvent {
     pub payload: DidReceiveSettingsPayload,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DidReceiveGlobalSettingsPayload {
     pub settings: HashMap<String, serde_json::Value>,

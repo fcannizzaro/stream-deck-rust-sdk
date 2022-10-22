@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use hyper::{body, Client, Method, Request};
 use hyper_tls::HttpsConnector;
-use std::collections::HashMap;
 
 pub async fn download_image(url: String, headers: Option<HashMap<String, String>>) -> Vec<u8> {
     let https = HttpsConnector::new();

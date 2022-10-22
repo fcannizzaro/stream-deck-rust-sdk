@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use futures_channel::mpsc::UnboundedReceiver;
+use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures_util::{FutureExt, StreamExt};
 use serde::de::value::MapDeserializer;
+use serde_json::Value;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tungstenite::Message;
@@ -31,13 +32,13 @@ pub mod images;
 #[cfg(feature = "download")]
 pub mod download;
 
-pub fn get_settings<T: serde::de::DeserializeOwned>(
-    settings: HashMap<String, serde_json::Value>,
-) -> T {
+pub fn get_settings<T: serde::de::DeserializeOwned>(settings: HashMap<String, Value>) -> T {
     T::deserialize(MapDeserializer::new(settings.into_iter())).unwrap()
 }
 
-pub async fn init() -> (
+pub async fn init(
+    ext_tx: Option<UnboundedSender<String>>,
+) -> (
     StreamDeck,
     WebSocketStream<MaybeTlsStream<TcpStream>>,
     UnboundedReceiver<Message>,
@@ -52,7 +53,7 @@ pub async fn init() -> (
     println!(" > connected");
 
     let (tx, rx) = futures::channel::mpsc::unbounded();
-    let stream_deck = StreamDeck::new(args.clone(), tx.clone());
+    let stream_deck = StreamDeck::new(args.clone(), tx.clone(), ext_tx);
 
     return (stream_deck.clone(), ws, rx);
 }
@@ -92,6 +93,12 @@ pub async fn connect(
                     action.on_settings_changed(e.clone(), sd).await;
                 }
                 InputEvent::DidReceiveGlobalSettings(e) => {
+                    let settings_value = serde_json::to_value(e.clone().payload.settings).unwrap();
+                    let update =
+                        serde_json::from_value::<HashMap<String, Value>>(settings_value).unwrap();
+
+                    sd.update_global_settings(update).await;
+
                     for (_k, action) in manager.actions.iter() {
                         action
                             .on_global_settings_changed(e.clone(), sd.clone())

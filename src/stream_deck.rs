@@ -3,21 +3,25 @@ use std::sync::Arc;
 
 use futures_channel::mpsc::UnboundedSender;
 use futures_util::SinkExt;
+use serde::de::value::MapDeserializer;
+use serde_json::Value;
 use tokio::sync::Mutex;
 use tungstenite::Message;
 
-use crate::{
-    ActionState, get_settings_event, log_message, register, send_to_property_inspector,
-    set_global_settings, set_image, set_settings, set_state, set_title, show_alert, show_ok,
-    StreamDeckArgs, StreamDeckTarget, switch_to_profile,
-};
 use crate::events::sent::{get_global_settings_event, open_url};
+use crate::{
+    get_settings_event, log_message, register, send_to_property_inspector, set_global_settings,
+    set_image, set_settings, set_state, set_title, show_alert, show_ok, switch_to_profile,
+    ActionState, StreamDeckArgs, StreamDeckTarget,
+};
 
 #[derive(Clone)]
 pub struct StreamDeck {
     pub contexts: Arc<Mutex<HashMap<String, Vec<String>>>>,
     args: StreamDeckArgs,
+    pub(crate) global_settings: Arc<Mutex<HashMap<String, Value>>>,
     tx: UnboundedSender<Message>,
+    ext_tx: Option<UnboundedSender<String>>,
 }
 
 impl StreamDeck {
@@ -25,12 +29,29 @@ impl StreamDeck {
         Arc::new(self.clone())
     }
 
-    pub fn new(args: StreamDeckArgs, tx: UnboundedSender<Message>) -> Self {
+    pub fn new(
+        args: StreamDeckArgs,
+        tx: UnboundedSender<Message>,
+        ext_tx: Option<UnboundedSender<String>>,
+    ) -> Self {
         Self {
             contexts: Arc::new(Mutex::new(HashMap::new())),
             args,
             tx,
+            global_settings: Arc::new(Mutex::new(HashMap::new())),
+            ext_tx,
         }
+    }
+
+    pub async fn global_settings<T: serde::de::DeserializeOwned>(&self) -> T {
+        T::deserialize(MapDeserializer::new(
+            self.global_settings.lock().await.clone().into_iter(),
+        ))
+        .unwrap()
+    }
+
+    pub async fn external(&self, data: String) {
+        self.ext_tx.clone().unwrap().send(data).await.unwrap();
     }
 
     pub(crate) async fn send(&self, content: String) {
@@ -46,7 +67,7 @@ impl StreamDeck {
             self.args.register_event.clone(),
             self.args.plugin_uuid.clone(),
         ))
-            .await
+        .await
     }
 
     pub async fn set_title(&self, context: String, title: Option<String>) {
@@ -89,14 +110,14 @@ impl StreamDeck {
             device,
             profile,
         ))
-            .await;
+        .await;
     }
 
     pub async fn send_to_property_inspector(
         &self,
         action: String,
         context: String,
-        payload: HashMap<String, serde_json::Value>,
+        payload: HashMap<String, Value>,
     ) {
         self.send(send_to_property_inspector(action, context, payload))
             .await;
@@ -119,7 +140,15 @@ impl StreamDeck {
         self.send(get_settings_event(context)).await;
     }
 
-    pub async fn set_global_settings<GlobalSettings: serde::ser::Serialize>(
+    pub async fn update_global_settings(&self, settings: HashMap<String, Value>) {
+        let mut locked = self.global_settings.lock().await;
+        locked.clear();
+        settings.iter().for_each(|(k, v)| {
+            locked.insert(k.clone(), v.clone());
+        });
+    }
+
+    pub async fn set_global_settings<GlobalSettings: serde::ser::Serialize + Clone>(
         &self,
         settings: GlobalSettings,
     ) {

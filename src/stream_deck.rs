@@ -89,7 +89,7 @@ impl StreamDeck {
         self.send(set_title(context, title, None, None)).await;
     }
 
-    pub async fn instances_of(&self, uuid: &str) -> Vec<String> {
+    pub async fn contexts_of(&self, uuid: &str) -> Vec<String> {
         let contexts = self.contexts.lock().await;
         if contexts.contains_key(uuid) {
             contexts.get(uuid).unwrap().clone()

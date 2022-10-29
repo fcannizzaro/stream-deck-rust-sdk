@@ -20,6 +20,7 @@ pub struct StreamDeck {
     pub contexts: Arc<Mutex<HashMap<String, Vec<String>>>>,
     args: StreamDeckArgs,
     pub(crate) global_settings: Arc<Mutex<HashMap<String, Value>>>,
+    pub(crate) instances_settings: Arc<Mutex<HashMap<String, HashMap<String, Value>>>>,
     tx: UnboundedSender<Message>,
     ext_tx: Option<UnboundedSender<String>>,
 }
@@ -39,6 +40,7 @@ impl StreamDeck {
             args,
             tx,
             global_settings: Arc::new(Mutex::new(HashMap::new())),
+            instances_settings: Arc::new(Mutex::new(HashMap::new())),
             ext_tx,
         }
     }
@@ -48,6 +50,17 @@ impl StreamDeck {
             self.global_settings.lock().await.clone().into_iter(),
         ))
         .unwrap()
+    }
+
+    pub async fn settings<T: serde::de::DeserializeOwned>(&self, context: String) -> Option<T> {
+        let all_settings = self.instances_settings.lock().await;
+        let settings = all_settings.get(&context);
+        match settings {
+            Some(settings) => {
+                Some(T::deserialize(MapDeserializer::new(settings.clone().into_iter())).unwrap())
+            }
+            None => None,
+        }
     }
 
     pub async fn external(&self, data: String) {
@@ -74,6 +87,15 @@ impl StreamDeck {
         #[cfg(feature = "logging")]
         println!(" > set_title: {:?}", title);
         self.send(set_title(context, title, None, None)).await;
+    }
+
+    pub async fn instances_of(&self, uuid: &str) -> Vec<String> {
+        let contexts = self.contexts.lock().await;
+        if contexts.contains_key(uuid) {
+            contexts.get(uuid).unwrap().clone()
+        } else {
+            vec![]
+        }
     }
 
     pub async fn set_title_extra(
@@ -146,6 +168,16 @@ impl StreamDeck {
         settings.iter().for_each(|(k, v)| {
             locked.insert(k.clone(), v.clone());
         });
+    }
+
+    pub(crate) async fn update_instances_settings(
+        &self,
+        context: String,
+        settings: HashMap<String, Value>,
+    ) {
+        let mut locked = self.instances_settings.lock().await;
+        locked.clear();
+        locked.insert(context, settings);
     }
 
     pub async fn set_global_settings<GlobalSettings: serde::ser::Serialize + Clone>(

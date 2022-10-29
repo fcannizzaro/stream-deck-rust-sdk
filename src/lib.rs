@@ -90,6 +90,11 @@ pub async fn connect(
             match input {
                 InputEvent::DidReceiveSettings(e) => {
                     let action = manager.get(&e.action);
+                    let settings_value = serde_json::to_value(e.clone().payload.settings).unwrap();
+                    let update =
+                        serde_json::from_value::<HashMap<String, Value>>(settings_value).unwrap();
+                    sd.update_instances_settings(e.context.clone(), update)
+                        .await;
                     action.on_settings_changed(e.clone(), sd).await;
                 }
                 InputEvent::DidReceiveGlobalSettings(e) => {

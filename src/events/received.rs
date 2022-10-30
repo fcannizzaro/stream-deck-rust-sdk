@@ -35,10 +35,15 @@ pub struct ShowActionEvent {
 }
 
 #[derive(Serialize, Clone)]
+pub struct SetStatePayload {
+    pub(crate) state: i32,
+}
+
+#[derive(Serialize, Clone)]
 pub struct SetStateEvent {
     pub(crate) event: String,
     pub(crate) context: String,
-    pub(crate) state: i32,
+    pub(crate) payload: SetStatePayload,
 }
 
 #[derive(Serialize, Clone)]
@@ -164,6 +169,8 @@ pub struct KeyEvent {
     pub context: String,
     pub device: String,
     pub payload: KeyEventPayload,
+    #[serde(skip_deserializing, skip_serializing)]
+    pub is_double_tap: bool,
 }
 
 #[derive(Deserialize, Clone)]

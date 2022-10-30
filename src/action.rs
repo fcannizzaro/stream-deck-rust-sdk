@@ -5,50 +5,37 @@ use crate::events::received::{
     DidReceiveGlobalSettingsEvent, DidReceiveSettingsEvent, KeyEvent, PropertyInspectorAppearEvent,
     SendToPluginEvent, SystemDidWakeUpEvent, TitleParametersDidChangeEvent,
 };
-use crate::{Arc, StreamDeck};
+use crate::stream_deck::StreamDeck;
 
 #[async_trait]
+#[allow(unused)]
 pub trait Action: Sync {
     fn uuid(&self) -> &str;
-    async fn on_appear(&self, _e: AppearEvent, _sd: Arc<StreamDeck>) {}
-    async fn on_disappear(&self, _e: AppearEvent, _sd: Arc<StreamDeck>) {}
-    async fn on_key_down(&self, _e: KeyEvent, _sd: Arc<StreamDeck>) {}
-    async fn on_key_up(&self, _e: KeyEvent, _sd: Arc<StreamDeck>) {}
-    // custom tap events
-    async fn on_single_tap(&self, _e: KeyEvent, _sd: Arc<StreamDeck>) {}
-    async fn on_double_tap(&self, _e: KeyEvent, _sd: Arc<StreamDeck>) {}
-    async fn on_long_tap(&self, _e: KeyEvent, _sd: Arc<StreamDeck>) {}
+    fn long_timeout(&self) -> f32 {
+        0.0
+    }
+    async fn on_appear(&self, e: AppearEvent, sd: StreamDeck) {}
+    async fn on_disappear(&self, e: AppearEvent, sd: StreamDeck) {}
+    async fn on_key_down(&self, e: KeyEvent, sd: StreamDeck) {}
+    async fn on_key_up(&self, e: KeyEvent, sd: StreamDeck) {}
+    // custom actions
+    async fn on_long_press(&self, e: KeyEvent, timeout: f32, sd: StreamDeck) {}
     // settings
-    async fn on_settings_changed(&self, _e: DidReceiveSettingsEvent, _sd: Arc<StreamDeck>) {}
-    async fn on_global_settings_changed(
-        &self,
-        _e: DidReceiveGlobalSettingsEvent,
-        _sd: Arc<StreamDeck>,
-    ) {
-    }
+    async fn on_settings_changed(&self, e: DidReceiveSettingsEvent, sd: StreamDeck) {}
+    async fn on_global_settings_changed(&self, e: DidReceiveGlobalSettingsEvent, sd: StreamDeck) {}
     // other events
-    async fn on_title_parameters_changed(
-        &self,
-        _e: TitleParametersDidChangeEvent,
-        _sd: Arc<StreamDeck>,
-    ) {
-    }
-    async fn on_device_connect(&self, _e: DeviceDidConnectEvent, _sd: Arc<StreamDeck>) {}
-    async fn on_device_disconnect(&self, _e: DeviceDidDisconnectEvent, _sd: Arc<StreamDeck>) {}
-    async fn on_application_launch(&self, _e: ApplicationEvent, _sd: Arc<StreamDeck>) {}
-    async fn on_application_terminate(&self, _e: ApplicationEvent, _sd: Arc<StreamDeck>) {}
-    async fn on_system_wake_up(&self, _e: SystemDidWakeUpEvent, _sd: Arc<StreamDeck>) {}
-    async fn on_property_inspector_appear(
-        &self,
-        _e: PropertyInspectorAppearEvent,
-        _sd: Arc<StreamDeck>,
-    ) {
-    }
+    async fn on_title_parameters_changed(&self, e: TitleParametersDidChangeEvent, sd: StreamDeck) {}
+    async fn on_device_connect(&self, e: DeviceDidConnectEvent, sd: StreamDeck) {}
+    async fn on_device_disconnect(&self, e: DeviceDidDisconnectEvent, sd: StreamDeck) {}
+    async fn on_application_launch(&self, e: ApplicationEvent, sd: StreamDeck) {}
+    async fn on_application_terminate(&self, e: ApplicationEvent, sd: StreamDeck) {}
+    async fn on_system_wake_up(&self, e: SystemDidWakeUpEvent, sd: StreamDeck) {}
+    async fn on_property_inspector_appear(&self, e: PropertyInspectorAppearEvent, sd: StreamDeck) {}
     async fn on_property_inspector_disappear(
         &self,
-        _e: PropertyInspectorAppearEvent,
-        _sd: Arc<StreamDeck>,
+        e: PropertyInspectorAppearEvent,
+        sd: StreamDeck,
     ) {
     }
-    async fn on_send_to_plugin(&self, _e: SendToPluginEvent, _sd: Arc<StreamDeck>) {}
+    async fn on_send_to_plugin(&self, e: SendToPluginEvent, sd: StreamDeck) {}
 }

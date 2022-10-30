@@ -76,11 +76,10 @@ impl StreamDeck {
     }
 
     pub async fn register(&self) {
-        self.send(register(
-            self.args.register_event.clone(),
-            self.args.plugin_uuid.clone(),
-        ))
-        .await
+        let uuid = self.args.plugin_uuid.clone();
+        self.send(register(self.args.register_event.clone(), uuid.clone()))
+            .await;
+        self.send(get_global_settings_event(uuid)).await
     }
 
     pub async fn set_title(&self, context: String, title: Option<String>) {
@@ -162,12 +161,18 @@ impl StreamDeck {
         self.send(get_settings_event(context)).await;
     }
 
-    pub(crate) async fn update_global_settings(&self, settings: HashMap<String, Value>) {
+    pub async fn update_global_settings(
+        &self,
+        settings: HashMap<String, Value>,
+        update: Option<bool>,
+    ) {
         let mut locked = self.global_settings.lock().await;
-        locked.clear();
         settings.iter().for_each(|(k, v)| {
             locked.insert(k.clone(), v.clone());
         });
+        if update.is_some() {
+            self.set_global_settings(locked.clone()).await;
+        }
     }
 
     pub(crate) async fn update_instances_settings(
@@ -176,7 +181,6 @@ impl StreamDeck {
         settings: HashMap<String, Value>,
     ) {
         let mut locked = self.instances_settings.lock().await;
-        locked.clear();
         locked.insert(context, settings);
     }
 

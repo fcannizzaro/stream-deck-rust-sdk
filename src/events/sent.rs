@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::events::received::{
     ActionState, GetSettingsEvent, LogMessageEvent, LogMessagePayload, OpenUrlEvent,
-    OpenUrlPayload, SendToPropertyInspectorEvent, SetSettingsEvent, SetStateEvent,
+    OpenUrlPayload, SendToPropertyInspectorEvent, SetSettingsEvent, SetStateEvent, SetStatePayload,
     SetTitleImageEvent, SetTitleImagePayload, ShowActionEvent, StreamDeckTarget,
     SwitchToProfileEvent, SwitchToProfilePayload,
 };
@@ -51,8 +51,8 @@ pub fn show_alert(context: String) -> String {
 pub fn set_state(context: String, state: i32) -> String {
     let event = SetStateEvent {
         event: "setState".to_string(),
+        payload: SetStatePayload { state: state },
         context,
-        state,
     };
     serde_json::to_string(&event).unwrap()
 }

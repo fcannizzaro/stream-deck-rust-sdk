@@ -1,11 +1,13 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
+use core::time::Duration;
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures_util::{FutureExt, StreamExt};
 use serde::de::value::MapDeserializer;
 use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::SystemTime;
 use tokio::net::TcpStream;
+use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tungstenite::Message;
 use url::Url;
@@ -70,10 +72,11 @@ pub async fn connect(
     let (ws_w, ws_r) = ws.split();
     let fwd_to_ws = rx.map(Ok).forward(ws_w).fuse();
 
-    stream_deck.clone().register().await;
-
     #[cfg(feature = "logging")]
     println!(" > plugin registered");
+
+    let actions = Arc::new(manager);
+    let press_events = Arc::new(Mutex::new(HashMap::<String, SystemTime>::new()));
 
     let ws_read = ws_r
         .for_each(|r_msg| async {
@@ -84,102 +87,149 @@ pub async fn connect(
             println!("Received: {}", data);
 
             let input: InputEvent = serde_json::from_str(&data).unwrap();
+            let manager = actions.clone();
+            let sd = stream_deck.clone();
+            let events_arc = press_events.clone();
 
-            let sd = stream_deck.to_arc();
-
-            match input {
-                InputEvent::DidReceiveSettings(e) => {
-                    let action = manager.get(&e.action);
-                    let settings_value = serde_json::to_value(e.clone().payload.settings).unwrap();
-                    let update =
-                        serde_json::from_value::<HashMap<String, Value>>(settings_value).unwrap();
-                    sd.update_instances_settings(e.context.clone(), update)
-                        .await;
-                    action.on_settings_changed(e.clone(), sd).await;
-                }
-                InputEvent::DidReceiveGlobalSettings(e) => {
-                    let settings_value = serde_json::to_value(e.clone().payload.settings).unwrap();
-                    let update =
-                        serde_json::from_value::<HashMap<String, Value>>(settings_value).unwrap();
-
-                    sd.update_global_settings(update).await;
-
-                    for (_k, action) in manager.actions.iter() {
-                        action
-                            .on_global_settings_changed(e.clone(), sd.clone())
+            tokio::spawn(async move {
+                match input {
+                    InputEvent::DidReceiveSettings(e) => {
+                        let action = manager.get(&e.action);
+                        let settings_value =
+                            serde_json::to_value(e.clone().payload.settings).unwrap();
+                        let update =
+                            serde_json::from_value::<HashMap<String, Value>>(settings_value)
+                                .unwrap();
+                        sd.update_instances_settings(e.context.clone(), update)
                             .await;
+                        action.on_settings_changed(e.clone(), sd).await;
+                    }
+                    InputEvent::DidReceiveGlobalSettings(e) => {
+                        let settings_value =
+                            serde_json::to_value(e.clone().payload.settings).unwrap();
+                        let update =
+                            serde_json::from_value::<HashMap<String, Value>>(settings_value)
+                                .unwrap();
+
+                        sd.update_global_settings(update, None).await;
+
+                        for (_k, action) in manager.actions.iter() {
+                            action
+                                .on_global_settings_changed(e.clone(), sd.clone())
+                                .await;
+                        }
+                    }
+                    InputEvent::KeyDown(e) => {
+                        let action = manager.get(&e.action);
+                        let now = SystemTime::now();
+                        let timeout = action.long_timeout();
+                        let mut interval = tokio::time::interval(Duration::from_millis(100));
+
+                        loop {
+                            interval.tick().await;
+                            let elapsed = now.elapsed().unwrap().as_millis() as f32;
+                            let events = events_arc.lock().await;
+                            let latest_event = events.get(&e.context.clone());
+
+                            // on key up was called before the long timeout
+                            if latest_event.is_some() && latest_event.unwrap() > &now {
+                                break;
+                            }
+
+                            // drop the lock
+                            drop(events);
+
+                            // check if the elapsed time is greater than the long timeout
+                            if elapsed >= timeout {
+                                action.on_long_press(e.clone(), timeout, sd.clone()).await;
+                            }
+                        }
+
+                        action.on_key_down(e, sd).await;
+                    }
+                    InputEvent::KeyUp(mut e) => {
+                        let action = manager.get(&e.action);
+                        let mut events = events_arc.lock().await;
+                        let latest_event = events.get(&e.context.clone());
+                        let now = SystemTime::now();
+
+                        if let Some(prev) = latest_event {
+                            let elapse_time = prev.elapsed().unwrap().as_millis();
+                            if elapse_time < 500 {
+                                e.is_double_tap = true;
+                            }
+                        }
+
+                        events.insert(e.context.clone(), now);
+                        action.on_key_up(e.clone(), sd).await;
+                    }
+                    InputEvent::WillAppear(e) => {
+                        let action = manager.get(&e.action);
+                        let arc_contexts = sd.contexts.clone();
+                        let mut contexts = arc_contexts.lock().await;
+                        let id = e.action.clone();
+                        contexts
+                            .entry(id)
+                            .or_insert(Vec::new())
+                            .push(e.context.clone());
+                        action.on_appear(e.clone(), sd).await;
+                    }
+                    InputEvent::WillDisappear(e) => {
+                        let action = manager.get(&e.action);
+                        let arc_contexts = sd.contexts.clone();
+                        let mut contexts = arc_contexts.lock().await;
+                        let id = e.action.clone();
+                        let contexts = contexts.entry(id).or_default();
+                        contexts.retain(|element| *element != e.context);
+                        action.on_disappear(e.clone(), sd).await;
+                    }
+                    InputEvent::TitleParametersDidChange(e) => {
+                        let action = manager.get(&e.action);
+                        action.on_title_parameters_changed(e.clone(), sd).await;
+                    }
+                    InputEvent::DeviceDidConnect(e) => {
+                        for (_k, action) in manager.actions.iter() {
+                            action.on_device_connect(e.clone(), sd.clone()).await;
+                        }
+                    }
+                    InputEvent::DeviceDidDisconnect(e) => {
+                        for (_k, action) in manager.actions.iter() {
+                            action.on_device_disconnect(e.clone(), sd.clone()).await;
+                        }
+                    }
+                    InputEvent::ApplicationDidLaunch(e) => {
+                        for (_k, action) in manager.actions.iter() {
+                            action.on_application_launch(e.clone(), sd.clone()).await;
+                        }
+                    }
+                    InputEvent::ApplicationDidTerminate(e) => {
+                        for (_k, action) in manager.actions.iter() {
+                            action.on_application_terminate(e.clone(), sd.clone()).await;
+                        }
+                    }
+                    InputEvent::SystemDidWakeUp(e) => {
+                        for (_k, action) in manager.actions.iter() {
+                            action.on_system_wake_up(e.clone(), sd.clone()).await;
+                        }
+                    }
+                    InputEvent::PropertyInspectorDidAppear(e) => {
+                        let action = manager.get(&e.action);
+                        action.on_property_inspector_appear(e.clone(), sd).await;
+                    }
+                    InputEvent::PropertyInspectorDidDisappear(e) => {
+                        let action = manager.get(&e.action);
+                        action.on_property_inspector_disappear(e.clone(), sd).await;
+                    }
+                    InputEvent::SendToPlugin(e) => {
+                        let action = manager.get(&e.action);
+                        action.on_send_to_plugin(e.clone(), sd).await;
                     }
                 }
-                InputEvent::KeyDown(e) => {
-                    let action = manager.get(&e.action);
-                    action.on_key_down(e.clone(), sd).await;
-                }
-                InputEvent::KeyUp(e) => {
-                    let action = manager.get(&e.action);
-                    action.on_key_up(e.clone(), sd).await;
-                }
-                InputEvent::WillAppear(e) => {
-                    let action = manager.get(&e.action);
-                    let mut contexts = stream_deck.contexts.lock().await;
-                    let id = e.action.clone();
-                    contexts
-                        .entry(id)
-                        .or_insert(Vec::new())
-                        .push(e.context.clone());
-                    action.on_appear(e.clone(), sd).await;
-                }
-                InputEvent::WillDisappear(e) => {
-                    let action = manager.get(&e.action);
-                    let mut contexts = stream_deck.contexts.lock().await;
-                    let id = e.action.clone();
-                    let contexts = contexts.entry(id).or_default();
-                    contexts.retain(|element| *element != e.context);
-                    action.on_disappear(e.clone(), sd).await;
-                }
-                InputEvent::TitleParametersDidChange(e) => {
-                    let action = manager.get(&e.action);
-                    action.on_title_parameters_changed(e.clone(), sd).await;
-                }
-                InputEvent::DeviceDidConnect(e) => {
-                    for (_k, action) in manager.actions.iter() {
-                        action.on_device_connect(e.clone(), sd.clone()).await;
-                    }
-                }
-                InputEvent::DeviceDidDisconnect(e) => {
-                    for (_k, action) in manager.actions.iter() {
-                        action.on_device_disconnect(e.clone(), sd.clone()).await;
-                    }
-                }
-                InputEvent::ApplicationDidLaunch(e) => {
-                    for (_k, action) in manager.actions.iter() {
-                        action.on_application_launch(e.clone(), sd.clone()).await;
-                    }
-                }
-                InputEvent::ApplicationDidTerminate(e) => {
-                    for (_k, action) in manager.actions.iter() {
-                        action.on_application_terminate(e.clone(), sd.clone()).await;
-                    }
-                }
-                InputEvent::SystemDidWakeUp(e) => {
-                    for (_k, action) in manager.actions.iter() {
-                        action.on_system_wake_up(e.clone(), sd.clone()).await;
-                    }
-                }
-                InputEvent::PropertyInspectorDidAppear(e) => {
-                    let action = manager.get(&e.action);
-                    action.on_property_inspector_appear(e.clone(), sd).await;
-                }
-                InputEvent::PropertyInspectorDidDisappear(e) => {
-                    let action = manager.get(&e.action);
-                    action.on_property_inspector_disappear(e.clone(), sd).await;
-                }
-                InputEvent::SendToPlugin(e) => {
-                    let action = manager.get(&e.action);
-                    action.on_send_to_plugin(e.clone(), sd).await;
-                }
-            }
+            });
         })
         .fuse();
+
+    stream_deck.clone().register().await;
 
     tokio::pin!(ws_read, fwd_to_ws);
 

@@ -108,8 +108,6 @@ impl StreamDeck {
     }
 
     pub async fn set_image_b64(&self, context: String, base64: Option<String>) {
-        #[cfg(feature = "logging")]
-        println!(" > set_image: {:?}", base64);
         self.send(set_image(context, base64, None, None)).await;
     }
 

@@ -4,6 +4,7 @@ use futures_util::{FutureExt, StreamExt};
 use serde::de::value::MapDeserializer;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::process::id;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::net::TcpStream;
@@ -76,7 +77,7 @@ pub async fn connect(
     println!(" > plugin registered");
 
     let actions = Arc::new(manager);
-    let press_events = Arc::new(Mutex::new(HashMap::<String, SystemTime>::new()));
+    let press_events = Arc::new(Mutex::new(HashMap::<String, (SystemTime, bool)>::new()));
 
     let ws_read = ws_r
         .for_each(|r_msg| async {
@@ -88,13 +89,12 @@ pub async fn connect(
 
             let input: InputEvent = serde_json::from_str(&data).unwrap();
             let manager = actions.clone();
-            let sd = stream_deck.clone();
             let events_arc = press_events.clone();
+            let sd = stream_deck.clone();
 
             tokio::spawn(async move {
                 match input {
                     InputEvent::DidReceiveSettings(e) => {
-                        let action = manager.get(&e.action);
                         let settings_value =
                             serde_json::to_value(e.clone().payload.settings).unwrap();
                         let update =
@@ -102,7 +102,10 @@ pub async fn connect(
                                 .unwrap();
                         sd.update_instances_settings(e.context.clone(), update)
                             .await;
-                        action.on_settings_changed(e.clone(), sd).await;
+                        manager
+                            .get(&e.action)
+                            .on_settings_changed(e.clone(), sd)
+                            .await;
                     }
                     InputEvent::DidReceiveGlobalSettings(e) => {
                         let settings_value =
@@ -124,68 +127,73 @@ pub async fn connect(
                         let now = SystemTime::now();
                         let timeout = action.long_timeout();
                         let mut interval = tokio::time::interval(Duration::from_millis(100));
-
+                        action.on_key_down(e.clone(), sd.clone()).await;
+                        // check every 100ms if the key is still pressed and if the timeout is reached
                         loop {
                             interval.tick().await;
                             let elapsed = now.elapsed().unwrap().as_millis() as f32;
-                            let events = events_arc.lock().await;
+                            let mut events = events_arc.lock().await;
                             let latest_event = events.get(&e.context.clone());
-
                             // on key up was called before the long timeout
-                            if latest_event.is_some() && latest_event.unwrap() > &now {
-                                break;
+                            if latest_event.is_some() {
+                                let (prev, _) = latest_event.unwrap();
+                                if prev > &now {
+                                    break;
+                                }
                             }
-
-                            // drop the lock
-                            drop(events);
-
                             // check if the elapsed time is greater than the long timeout
                             if elapsed >= timeout {
                                 action.on_long_press(e.clone(), timeout, sd.clone()).await;
+                                events.insert(e.context.clone(), (SystemTime::now(), true));
+                                return;
                             }
                         }
-
-                        action.on_key_down(e, sd).await;
                     }
                     InputEvent::KeyUp(mut e) => {
-                        let action = manager.get(&e.action);
                         let mut events = events_arc.lock().await;
                         let latest_event = events.get(&e.context.clone());
-                        let now = SystemTime::now();
-
-                        if let Some(prev) = latest_event {
+                        let mut should_skip = false;
+                        // check if elapsed time between two "onKeyUp" events is less than 500ms
+                        if let Some((prev, skip)) = latest_event {
+                            should_skip = *skip;
                             let elapse_time = prev.elapsed().unwrap().as_millis();
                             if elapse_time < 500 {
                                 e.is_double_tap = true;
                             }
                         }
-
-                        events.insert(e.context.clone(), now);
-                        action.on_key_up(e.clone(), sd).await;
+                        // update the latest event time
+                        events.insert(e.context.clone(), (SystemTime::now(), false));
+                        drop(events);
+                        // trigger the event modified or not (if needed)
+                        if !should_skip {
+                            manager.get(&e.action).on_key_up(e.clone(), sd).await;
+                        }
                     }
                     InputEvent::WillAppear(e) => {
-                        let action = manager.get(&e.action);
+                        let id = e.action.clone();
                         let arc_contexts = sd.contexts.clone();
                         let mut contexts = arc_contexts.lock().await;
-                        let id = e.action.clone();
+                        sd.update_instances_settings(e.context.clone(), e.payload.settings.clone())
+                            .await;
                         contexts
                             .entry(id)
                             .or_insert(Vec::new())
                             .push(e.context.clone());
-                        action.on_appear(e.clone(), sd).await;
+                        manager.get(&e.action).on_appear(e.clone(), sd).await;
                     }
                     InputEvent::WillDisappear(e) => {
-                        let action = manager.get(&e.action);
+                        let id = e.action.clone();
                         let arc_contexts = sd.contexts.clone();
                         let mut contexts = arc_contexts.lock().await;
-                        let id = e.action.clone();
                         let contexts = contexts.entry(id).or_default();
                         contexts.retain(|element| *element != e.context);
-                        action.on_disappear(e.clone(), sd).await;
+                        manager.get(&e.action).on_disappear(e.clone(), sd).await;
                     }
                     InputEvent::TitleParametersDidChange(e) => {
-                        let action = manager.get(&e.action);
-                        action.on_title_parameters_changed(e.clone(), sd).await;
+                        manager
+                            .get(&e.action)
+                            .on_title_parameters_changed(e.clone(), sd)
+                            .await;
                     }
                     InputEvent::DeviceDidConnect(e) => {
                         for (_k, action) in manager.actions.iter() {
@@ -213,16 +221,22 @@ pub async fn connect(
                         }
                     }
                     InputEvent::PropertyInspectorDidAppear(e) => {
-                        let action = manager.get(&e.action);
-                        action.on_property_inspector_appear(e.clone(), sd).await;
+                        manager
+                            .get(&e.action)
+                            .on_property_inspector_appear(e.clone(), sd)
+                            .await;
                     }
                     InputEvent::PropertyInspectorDidDisappear(e) => {
-                        let action = manager.get(&e.action);
-                        action.on_property_inspector_disappear(e.clone(), sd).await;
+                        manager
+                            .get(&e.action)
+                            .on_property_inspector_disappear(e.clone(), sd)
+                            .await;
                     }
                     InputEvent::SendToPlugin(e) => {
-                        let action = manager.get(&e.action);
-                        action.on_send_to_plugin(e.clone(), sd).await;
+                        manager
+                            .get(&e.action)
+                            .on_send_to_plugin(e.clone(), sd)
+                            .await;
                     }
                 }
             });

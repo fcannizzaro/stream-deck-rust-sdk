@@ -22,4 +22,8 @@ impl ActionManager {
     pub(crate) fn get(&self, uuid: &String) -> &Box<dyn Action + Send> {
         self.actions.get(uuid).unwrap()
     }
+
+    pub(crate) fn shared(&self) -> Option<&Box<dyn Action + Send>> {
+        self.actions.get(&"shared".to_string())
+    }
 }

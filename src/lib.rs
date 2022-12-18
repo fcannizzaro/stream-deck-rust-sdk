@@ -4,13 +4,13 @@ use futures_util::{FutureExt, StreamExt};
 use serde::de::value::MapDeserializer;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::process::id;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tungstenite::Message;
+
 use url::Url;
 
 use crate::action::Action;
@@ -126,26 +126,28 @@ pub async fn connect(
                         let action = manager.get(&e.action);
                         let now = SystemTime::now();
                         let timeout = action.long_timeout();
-                        let mut interval = tokio::time::interval(Duration::from_millis(100));
                         action.on_key_down(e.clone(), sd.clone()).await;
-                        // check every 100ms if the key is still pressed and if the timeout is reached
-                        loop {
-                            interval.tick().await;
-                            let elapsed = now.elapsed().unwrap().as_millis() as f32;
-                            let mut events = events_arc.lock().await;
-                            let latest_event = events.get(&e.context.clone());
-                            // on key up was called before the long timeout
-                            if latest_event.is_some() {
-                                let (prev, _) = latest_event.unwrap();
-                                if prev > &now {
-                                    break;
+                        if timeout > 0.0 {
+                            let mut interval = tokio::time::interval(Duration::from_millis(100));
+                            // check every 100ms if the key is still pressed and if the timeout is reached
+                            loop {
+                                interval.tick().await;
+                                let elapsed = now.elapsed().unwrap().as_millis() as f32;
+                                let mut events = events_arc.lock().await;
+                                let latest_event = events.get(&e.context.clone());
+                                // on key up was called before the long timeout
+                                if latest_event.is_some() {
+                                    let (prev, _) = latest_event.unwrap();
+                                    if prev > &now {
+                                        break;
+                                    }
                                 }
-                            }
-                            // check if the elapsed time is greater than the long timeout
-                            if elapsed >= timeout {
-                                action.on_long_press(e.clone(), timeout, sd.clone()).await;
-                                events.insert(e.context.clone(), (SystemTime::now(), true));
-                                return;
+                                // check if the elapsed time is greater than the long timeout
+                                if elapsed >= timeout {
+                                    action.on_long_press(e.clone(), timeout, sd.clone()).await;
+                                    events.insert(e.context.clone(), (SystemTime::now(), true));
+                                    return;
+                                }
                             }
                         }
                     }
@@ -233,6 +235,13 @@ pub async fn connect(
                             .await;
                     }
                     InputEvent::SendToPlugin(e) => {
+                        let shared = manager.shared();
+
+                        if shared.is_some() {
+                            let shared = shared.unwrap();
+                            shared.on_send_to_plugin(e.clone(), sd.clone()).await;
+                        }
+
                         manager
                             .get(&e.action)
                             .on_send_to_plugin(e.clone(), sd)

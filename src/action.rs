@@ -1,9 +1,10 @@
 use async_trait::async_trait;
 
 use crate::events::received::{
-    AppearEvent, ApplicationEvent, DeviceDidConnectEvent, DeviceDidDisconnectEvent,
-    DidReceiveGlobalSettingsEvent, DidReceiveSettingsEvent, KeyEvent, PropertyInspectorAppearEvent,
-    SendToPluginEvent, SystemDidWakeUpEvent, TitleParametersDidChangeEvent,
+    AppearEvent, ApplicationEvent, DeviceDidConnectEvent, DeviceDidDisconnectEvent, DialPressEvent,
+    DialRotateEvent, DidReceiveGlobalSettingsEvent, DidReceiveSettingsEvent, KeyEvent,
+    PropertyInspectorAppearEvent, SendToPluginEvent, SystemDidWakeUpEvent,
+    TitleParametersDidChangeEvent, TouchTapEvent,
 };
 use crate::stream_deck::StreamDeck;
 
@@ -23,6 +24,11 @@ pub trait Action: Sync {
     // settings
     async fn on_settings_changed(&self, e: DidReceiveSettingsEvent, sd: StreamDeck) {}
     async fn on_global_settings_changed(&self, e: DidReceiveGlobalSettingsEvent, sd: StreamDeck) {}
+    // dial
+    async fn on_dial_rotate(&self, e: DialRotateEvent, sd: StreamDeck) {}
+    async fn on_dial_press(&self, e: DialPressEvent, sd: StreamDeck) {}
+    // touch
+    async fn on_touch_tap(&self, e: TouchTapEvent, sd: StreamDeck) {}
     // other events
     async fn on_title_parameters_changed(&self, e: TitleParametersDidChangeEvent, sd: StreamDeck) {}
     async fn on_device_connect(&self, e: DeviceDidConnectEvent, sd: StreamDeck) {}

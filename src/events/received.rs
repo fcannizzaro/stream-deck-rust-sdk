@@ -173,6 +173,47 @@ pub struct KeyEvent {
     pub is_double_tap: bool,
 }
 
+// TODO: Waiting for official sdk update
+#[derive(Deserialize, Clone)]
+pub struct DialRotateEvent {
+    pub action: String,
+    pub context: String,
+    pub device: String,
+    pub payload: KeyEventPayload,
+}
+
+// TODO: Waiting for official sdk update
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DialPressEventPayload {
+    pub pressed: Option<bool>,
+    pub settings: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct DialPressEvent {
+    pub action: String,
+    pub context: String,
+    pub device: String,
+    pub payload: DialPressEventPayload,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TouchTapEventPayload {
+    pub hold: Option<bool>,
+    pub tap_pos: Option<[i32; 2]>,
+    pub settings: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct TouchTapEvent {
+    pub action: String,
+    pub context: String,
+    pub device: String,
+    pub payload: TouchTapEventPayload,
+}
+
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AppearEventPayload {
@@ -273,6 +314,12 @@ pub enum InputEvent {
     KeyDown(KeyEvent),
     #[serde(rename = "keyUp")]
     KeyUp(KeyEvent),
+    #[serde(rename = "dialRotate")]
+    DialRotate(DialRotateEvent),
+    #[serde(rename = "dialPress")]
+    DialPress(DialPressEvent),
+    #[serde(rename = "touchTap")]
+    TouchTap(TouchTapEvent),
     #[serde(rename = "willAppear")]
     WillAppear(AppearEvent),
     #[serde(rename = "willDisappear")]

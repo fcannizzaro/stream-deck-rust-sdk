@@ -171,6 +171,15 @@ pub async fn connect(
                             manager.get(&e.action).on_key_up(e.clone(), sd).await;
                         }
                     }
+                    InputEvent::TouchTap(e) => {
+                        manager.get(&e.action).on_touch_tap(e, sd).await;
+                    }
+                    InputEvent::DialPress(e) => {
+                        manager.get(&e.action).on_dial_press(e, sd).await;
+                    }
+                    InputEvent::DialRotate(e) => {
+                        manager.get(&e.action).on_dial_rotate(e, sd).await;
+                    }
                     InputEvent::WillAppear(e) => {
                         let id = e.action.clone();
                         let arc_contexts = sd.contexts.clone();

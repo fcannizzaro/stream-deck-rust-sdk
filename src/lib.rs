@@ -16,7 +16,7 @@ use url::Url;
 use crate::action::Action;
 use crate::action_manager::ActionManager;
 use crate::args::{parse_args, StreamDeckArgs};
-use crate::events::received::{ActionState, InputEvent, RegistrationEvent, StreamDeckTarget};
+use crate::events::events::{ActionState, InputEvent, RegistrationEvent, StreamDeckTarget};
 use crate::events::sent::{
     get_settings_event, log_message, register, send_to_property_inspector, set_global_settings,
     set_image, set_settings, set_state, set_title, show_alert, show_ok, switch_to_profile,

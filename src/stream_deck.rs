@@ -8,7 +8,7 @@ use serde_json::Value;
 use tokio::sync::Mutex;
 use tungstenite::Message;
 
-use crate::events::sent::{get_global_settings_event, open_url};
+use crate::events::sent::{get_global_settings_event, open_url, set_feedback};
 use crate::{
     get_settings_event, log_message, register, send_to_property_inspector, set_global_settings,
     set_image, set_settings, set_state, set_title, show_alert, show_ok, switch_to_profile,
@@ -144,6 +144,18 @@ impl StreamDeck {
 
     pub async fn set_state(&self, context: String, state: i32) {
         self.send(set_state(context, state)).await;
+    }
+
+    pub async fn set_feedback(
+        &self,
+        context: String,
+        value: i32,
+        indicator: i32,
+        title: Option<String>,
+        opacity: Option<i32>,
+    ) {
+        self.send(set_feedback(context, value, indicator, title, opacity))
+            .await;
     }
 
     pub async fn open_url(&self, url: String) {

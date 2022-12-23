@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::events::received::{
+use crate::events::events::{
     AppearEvent, ApplicationEvent, DeviceDidConnectEvent, DeviceDidDisconnectEvent, DialPressEvent,
     DialRotateEvent, DidReceiveGlobalSettingsEvent, DidReceiveSettingsEvent, KeyEvent,
     PropertyInspectorAppearEvent, SendToPluginEvent, SystemDidWakeUpEvent,

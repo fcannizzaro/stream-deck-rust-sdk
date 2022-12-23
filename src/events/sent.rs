@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
-use crate::events::received::{
+use crate::events::events::{
     ActionState, GetSettingsEvent, LogMessageEvent, LogMessagePayload, OpenUrlEvent,
-    OpenUrlPayload, SendToPropertyInspectorEvent, SetSettingsEvent, SetStateEvent, SetStatePayload,
-    SetTitleImageEvent, SetTitleImagePayload, ShowActionEvent, StreamDeckTarget,
+    OpenUrlPayload, SendToPropertyInspectorEvent, SetFeedbackEvent, SetFeedbackPayload,
+    SetFeedbackPayloadIcon, SetFeedbackPayloadTitle, SetSettingsEvent, SetStateEvent,
+    SetStatePayload, SetTitleImageEvent, SetTitleImagePayload, ShowActionEvent, StreamDeckTarget,
     SwitchToProfileEvent, SwitchToProfilePayload,
 };
 use crate::RegistrationEvent;
@@ -52,6 +53,36 @@ pub fn set_state(context: String, state: i32) -> String {
     let event = SetStateEvent {
         event: "setState".to_string(),
         payload: SetStatePayload { state: state },
+        context,
+    };
+    serde_json::to_string(&event).unwrap()
+}
+
+pub fn set_feedback(
+    context: String,
+    value: i32,
+    indicator: i32,
+    title: Option<String>,
+    opacity: Option<i32>,
+) -> String {
+    let title = match title {
+        Some(title) => Some(SetFeedbackPayloadTitle { value: title }),
+        None => None,
+    };
+
+    let icon = match opacity {
+        Some(opacity) => Some(SetFeedbackPayloadIcon { opacity }),
+        None => None,
+    };
+
+    let event = SetFeedbackEvent {
+        event: "setFeedback".to_string(),
+        payload: SetFeedbackPayload {
+            value,
+            indicator,
+            title,
+            icon,
+        },
         context,
     };
     serde_json::to_string(&event).unwrap()

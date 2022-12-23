@@ -47,6 +47,31 @@ pub struct SetStateEvent {
 }
 
 #[derive(Serialize, Clone)]
+pub struct SetFeedbackPayloadIcon {
+    pub(crate) opacity: i32,
+}
+
+#[derive(Serialize, Clone)]
+pub struct SetFeedbackPayloadTitle {
+    pub(crate) value: String,
+}
+
+#[derive(Serialize, Clone)]
+pub struct SetFeedbackPayload {
+    pub(crate) value: i32,
+    pub(crate) indicator: i32,
+    pub(crate) title: Option<SetFeedbackPayloadTitle>,
+    pub(crate) icon: Option<SetFeedbackPayloadIcon>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct SetFeedbackEvent {
+    pub(crate) event: String,
+    pub(crate) context: String,
+    pub(crate) payload: SetFeedbackPayload,
+}
+
+#[derive(Serialize, Clone)]
 pub struct LogMessagePayload {
     pub(crate) message: String,
 }

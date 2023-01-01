@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use serde_repr::Serialize_repr;
 
 use crate::args::DeviceInfo;
@@ -47,28 +48,22 @@ pub struct SetStateEvent {
 }
 
 #[derive(Serialize, Clone)]
-pub struct SetFeedbackPayloadIcon {
-    pub(crate) opacity: i32,
-}
-
-#[derive(Serialize, Clone)]
-pub struct SetFeedbackPayloadTitle {
-    pub(crate) value: String,
-}
-
-#[derive(Serialize, Clone)]
-pub struct SetFeedbackPayload {
-    pub(crate) value: i32,
-    pub(crate) indicator: i32,
-    pub(crate) title: Option<SetFeedbackPayloadTitle>,
-    pub(crate) icon: Option<SetFeedbackPayloadIcon>,
-}
-
-#[derive(Serialize, Clone)]
 pub struct SetFeedbackEvent {
     pub(crate) event: String,
     pub(crate) context: String,
-    pub(crate) payload: SetFeedbackPayload,
+    pub(crate) payload: Value,
+}
+
+#[derive(Serialize, Clone)]
+pub struct SetFeedbackLayoutPayload {
+    pub(crate) layout: String,
+}
+
+#[derive(Serialize, Clone)]
+pub struct SetFeedbackLayoutEvent {
+    pub(crate) event: String,
+    pub(crate) context: String,
+    pub(crate) payload: SetFeedbackLayoutPayload,
 }
 
 #[derive(Serialize, Clone)]
@@ -124,7 +119,7 @@ pub struct SendToPropertyInspectorEvent {
     pub(crate) event: String,
     pub(crate) action: String,
     pub(crate) context: String,
-    pub(crate) payload: HashMap<String, serde_json::Value>,
+    pub(crate) payload: HashMap<String, Value>,
 }
 
 #[derive(Serialize, Clone)]
@@ -154,7 +149,7 @@ pub struct EmptySettings {}
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DidReceiveSettingsPayload {
-    pub settings: HashMap<String, serde_json::Value>,
+    pub settings: HashMap<String, Value>,
     pub coordinates: Option<PayloadCoordinates>,
     pub is_in_multi_action: bool,
 }
@@ -170,7 +165,7 @@ pub struct DidReceiveSettingsEvent {
 #[derive(Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DidReceiveGlobalSettingsPayload {
-    pub settings: HashMap<String, serde_json::Value>,
+    pub settings: HashMap<String, Value>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -185,7 +180,7 @@ pub struct KeyEventPayload {
     pub user_desired_state: Option<i32>,
     pub is_in_multi_action: bool,
     pub coordinates: Option<PayloadCoordinates>,
-    pub settings: HashMap<String, serde_json::Value>,
+    pub settings: HashMap<String, Value>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -198,21 +193,28 @@ pub struct KeyEvent {
     pub is_double_tap: bool,
 }
 
-// TODO: Waiting for official sdk update
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DialRotateEventPayload {
+    pub ticks: i32,
+    pub pressed: bool,
+    pub settings: HashMap<String, Value>,
+}
+
 #[derive(Deserialize, Clone)]
 pub struct DialRotateEvent {
     pub action: String,
     pub context: String,
     pub device: String,
-    pub payload: KeyEventPayload,
+    pub payload: DialRotateEventPayload,
 }
 
-// TODO: Waiting for official sdk update
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DialPressEventPayload {
     pub pressed: Option<bool>,
-    pub settings: HashMap<String, serde_json::Value>,
+    pub coordinates: Option<PayloadCoordinates>,
+    pub settings: HashMap<String, Value>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -226,9 +228,10 @@ pub struct DialPressEvent {
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TouchTapEventPayload {
-    pub hold: Option<bool>,
-    pub tap_pos: Option<[i32; 2]>,
-    pub settings: HashMap<String, serde_json::Value>,
+    pub hold: bool,
+    pub coordinates: PayloadCoordinates,
+    pub tap_pos: [i32; 2],
+    pub settings: HashMap<String, Value>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -240,12 +243,19 @@ pub struct TouchTapEvent {
 }
 
 #[derive(Deserialize, Clone)]
+pub enum Controller {
+    Keypad,
+    Encoder,
+}
+
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AppearEventPayload {
     pub state: Option<i32>,
     pub is_in_multi_action: bool,
     pub coordinates: Option<PayloadCoordinates>,
-    pub settings: HashMap<String, serde_json::Value>,
+    pub settings: HashMap<String, Value>,
+    pub controller: Controller,
 }
 
 #[derive(Deserialize, Clone)]
@@ -283,7 +293,7 @@ pub struct TitleParametersDidChangeEventPayload {
     pub title: String,
     pub title_parameters: TitleParameters,
     pub coordinates: Option<PayloadCoordinates>,
-    pub settings: HashMap<String, serde_json::Value>,
+    pub settings: HashMap<String, Value>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -325,7 +335,7 @@ pub struct PropertyInspectorAppearEvent {
 pub struct SendToPluginEvent {
     pub action: String,
     pub context: String,
-    pub payload: HashMap<String, serde_json::Value>,
+    pub payload: HashMap<String, Value>,
 }
 
 #[derive(Deserialize, Clone)]

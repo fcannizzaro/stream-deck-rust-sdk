@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
+use serde_json::Value;
+
 use crate::events::events::{
     ActionState, GetSettingsEvent, LogMessageEvent, LogMessagePayload, OpenUrlEvent,
-    OpenUrlPayload, SendToPropertyInspectorEvent, SetFeedbackEvent, SetFeedbackPayload,
-    SetFeedbackPayloadIcon, SetFeedbackPayloadTitle, SetSettingsEvent, SetStateEvent,
-    SetStatePayload, SetTitleImageEvent, SetTitleImagePayload, ShowActionEvent, StreamDeckTarget,
-    SwitchToProfileEvent, SwitchToProfilePayload,
+    OpenUrlPayload, SendToPropertyInspectorEvent, SetFeedbackEvent, SetFeedbackLayoutEvent,
+    SetFeedbackLayoutPayload, SetSettingsEvent, SetStateEvent, SetStatePayload, SetTitleImageEvent,
+    SetTitleImagePayload, ShowActionEvent, StreamDeckTarget, SwitchToProfileEvent,
+    SwitchToProfilePayload,
 };
 use crate::RegistrationEvent;
 
@@ -52,37 +54,25 @@ pub fn show_alert(context: String) -> String {
 pub fn set_state(context: String, state: i32) -> String {
     let event = SetStateEvent {
         event: "setState".to_string(),
-        payload: SetStatePayload { state: state },
+        payload: SetStatePayload { state },
         context,
     };
     serde_json::to_string(&event).unwrap()
 }
 
-pub fn set_feedback(
-    context: String,
-    value: i32,
-    indicator: i32,
-    title: Option<String>,
-    opacity: Option<i32>,
-) -> String {
-    let title = match title {
-        Some(title) => Some(SetFeedbackPayloadTitle { value: title }),
-        None => None,
-    };
-
-    let icon = match opacity {
-        Some(opacity) => Some(SetFeedbackPayloadIcon { opacity }),
-        None => None,
-    };
-
+pub fn set_feedback(context: String, feedback: Value) -> String {
     let event = SetFeedbackEvent {
         event: "setFeedback".to_string(),
-        payload: SetFeedbackPayload {
-            value,
-            indicator,
-            title,
-            icon,
-        },
+        payload: feedback,
+        context,
+    };
+    serde_json::to_string(&event).unwrap()
+}
+
+pub fn set_feedback_layout(context: String, layout: String) -> String {
+    let event = SetFeedbackLayoutEvent {
+        event: "setFeedbackLayout".to_string(),
+        payload: SetFeedbackLayoutPayload { layout },
         context,
     };
     serde_json::to_string(&event).unwrap()
@@ -117,7 +107,7 @@ pub fn switch_to_profile(context: String, device: String, profile: String) -> St
 pub fn send_to_property_inspector(
     action: String,
     context: String,
-    payload: HashMap<String, serde_json::Value>,
+    payload: HashMap<String, Value>,
 ) -> String {
     let event = SendToPropertyInspectorEvent {
         event: "sendToPropertyInspector".to_string(),

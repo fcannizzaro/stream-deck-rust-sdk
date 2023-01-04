@@ -1,6 +1,6 @@
 [package]
 name = "stream_deck_sdk"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2021"
 description = "Rust unofficial SDK for the Elgato Stream Deck"
 repository = "https://github.com/fcannizzaro/stream-deck-rust-sdk"

@@ -255,7 +255,7 @@ pub struct AppearEventPayload {
     pub is_in_multi_action: bool,
     pub coordinates: Option<PayloadCoordinates>,
     pub settings: HashMap<String, Value>,
-    pub controller: Controller,
+    pub controller: Option<Controller>,
 }
 
 #[derive(Deserialize, Clone)]

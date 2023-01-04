@@ -59,18 +59,18 @@ pub struct DeviceSize {
 #[derive(Deserialize, Clone)]
 pub struct DeviceInfo {
     pub id: Option<String>,
-    pub name: String,
-    pub size: Option<DeviceSize>,
+    pub name: Option<String>,
+    // pub size: Option<DeviceSize>,
     #[serde(rename = "type")]
-    pub device_type: DeviceType,
+    pub device_type: i32,
 }
 
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Info {
-    pub application: ApplicationInfo,
-    pub colors: ColorsInfo,
-    pub device_pixel_ratio: i32,
+    // pub application: ApplicationInfo,
+    // pub colors: ColorsInfo,
+    // pub device_pixel_ratio: i32,
     pub devices: Vec<DeviceInfo>,
     pub plugin: PluginInfo,
 }

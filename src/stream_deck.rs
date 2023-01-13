@@ -45,11 +45,14 @@ impl StreamDeck {
         }
     }
 
-    pub async fn global_settings<T: serde::de::DeserializeOwned>(&self) -> T {
-        T::deserialize(MapDeserializer::new(
+    pub async fn global_settings<T: serde::de::DeserializeOwned>(&self) -> Option<T> {
+        let deserialized = T::deserialize(MapDeserializer::new(
             self.global_settings.lock().await.clone().into_iter(),
-        ))
-        .unwrap()
+        ));
+        match deserialized {
+            Ok(deserialized) => Some(deserialized),
+            Err(_) => None,
+        }
     }
 
     pub async fn settings<T: serde::de::DeserializeOwned>(&self, context: String) -> Option<T> {
@@ -57,7 +60,12 @@ impl StreamDeck {
         let settings = all_settings.get(&context);
         match settings {
             Some(settings) => {
-                Some(T::deserialize(MapDeserializer::new(settings.clone().into_iter())).unwrap())
+                let deserialized =
+                    T::deserialize(MapDeserializer::new(settings.clone().into_iter()));
+                match deserialized {
+                    Ok(deserialized) => Some(deserialized),
+                    Err(_) => None,
+                }
             }
             None => None,
         }

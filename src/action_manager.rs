@@ -13,9 +13,10 @@ impl ActionManager {
         }
     }
 
-    pub fn register(mut self, action: Box<dyn Action + Send>) -> Self {
-        let uuid = action.uuid();
-        self.actions.insert(uuid.to_string(), action);
+    pub fn register(mut self, actions: Vec<Box<dyn Action + Send>>) -> Self {
+        for action in actions {
+            self.actions.insert(action.uuid().to_string(), action);
+        }
         self
     }
 

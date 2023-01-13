@@ -21,33 +21,33 @@ pub struct StreamDeckArgs {
     pub port: i32,
     pub plugin_uuid: String,
     pub register_event: String,
-    pub info: Info,
+    pub info: Option<Info>,
 }
 
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ApplicationInfo {
-    pub font: String,
-    pub language: String,
-    pub platform: String,
-    pub platform_version: String,
-    pub version: String,
+    pub font: Option<String>,
+    pub language: Option<String>,
+    pub platform: Option<String>,
+    pub platform_version: Option<String>,
+    pub version: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ColorsInfo {
-    pub button_mouse_over_background_color: String,
-    pub button_pressed_background_color: String,
-    pub button_pressed_border_color: String,
-    pub button_pressed_text_color: String,
-    pub highlight_color: String,
+    pub button_mouse_over_background_color: Option<String>,
+    pub button_pressed_background_color: Option<String>,
+    pub button_pressed_border_color: Option<String>,
+    pub button_pressed_text_color: Option<String>,
+    pub highlight_color: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
 pub struct PluginInfo {
-    pub uuid: String,
-    pub version: String,
+    pub uuid: Option<String>,
+    pub version: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -60,7 +60,7 @@ pub struct DeviceSize {
 pub struct DeviceInfo {
     pub id: Option<String>,
     pub name: Option<String>,
-    // pub size: Option<DeviceSize>,
+    pub size: Option<DeviceSize>,
     #[serde(rename = "type")]
     pub device_type: i32,
 }
@@ -68,10 +68,9 @@ pub struct DeviceInfo {
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Info {
-    // pub application: ApplicationInfo,
-    // pub colors: ColorsInfo,
-    // pub device_pixel_ratio: i32,
-    pub devices: Vec<DeviceInfo>,
+    pub application: ApplicationInfo,
+    pub device_pixel_ratio: Option<i32>,
+    pub devices: Option<Vec<DeviceInfo>>,
     pub plugin: PluginInfo,
 }
 
@@ -85,13 +84,18 @@ pub fn parse_args() -> StreamDeckArgs {
         "-port" => port = args[i + 1].parse().unwrap(),
         "-pluginUUID" => plugin_uuid = args[i + 1].to_string(),
         "-registerEvent" => register_event = args[i + 1].to_string(),
-        "-info" => info = Some(serde_json::from_str(&args[i + 1].to_string()).unwrap()),
+        "-info" => {
+            let parsed = serde_json::from_str(&args[i + 1].to_string());
+            if parsed.is_ok() {
+                info = parsed.unwrap();
+            }
+        }
         &_ => {}
     });
     return StreamDeckArgs {
         port,
         plugin_uuid,
         register_event,
-        info: info.unwrap(),
+        info,
     };
 }

@@ -277,21 +277,21 @@ pub enum TitleAlignment {
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TitleParameters {
-    pub font_family: String,
-    pub font_size: i32,
-    pub font_style: String,
-    pub font_underline: bool,
-    pub show_title: bool,
-    pub title_alignment: TitleAlignment,
-    pub title_color: String,
+    pub font_family: Option<String>,
+    pub font_size: Option<i32>,
+    pub font_style: Option<String>,
+    pub font_underline: Option<bool>,
+    pub show_title: Option<bool>,
+    pub title_alignment: Option<TitleAlignment>,
+    pub title_color: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TitleParametersDidChangeEventPayload {
-    pub state: i32,
-    pub title: String,
-    pub title_parameters: TitleParameters,
+    pub state: Option<i32>,
+    pub title: Option<String>,
+    pub title_parameters: Option<TitleParameters>,
     pub coordinates: Option<PayloadCoordinates>,
     pub settings: HashMap<String, Value>,
 }
@@ -317,8 +317,13 @@ pub struct DeviceDidDisconnectEvent {
 }
 
 #[derive(Deserialize, Clone)]
-pub struct ApplicationEvent {
+pub struct ApplicationEventPayloadData {
     pub application: String,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct ApplicationEvent {
+    pub payload: ApplicationEventPayloadData,
 }
 
 #[derive(Deserialize, Clone)]

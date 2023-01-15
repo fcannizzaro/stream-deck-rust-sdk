@@ -1,6 +1,6 @@
 [package]
 name = "stream_deck_sdk"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 description = "Rust unofficial SDK for the Elgato Stream Deck"
 repository = "https://github.com/fcannizzaro/stream-deck-rust-sdk"
@@ -25,7 +25,7 @@ serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.21.2", features = ["full"] }
 hyper = { version = "0.14", features = ["full"], optional = true }
 hyper-tls = { version = "0.5.0", optional = true }
-base64 = { version = "0.20.0", optional = true }
+base64 = { version = "0.21.0", optional = true }
 
 [features]
 images = ["base64"]

@@ -141,6 +141,7 @@ impl Init {
                                     if elapsed >= timeout {
                                         action.on_long_press(e.clone(), timeout, sd.clone()).await;
                                         events.insert(e.context.clone(), (SystemTime::now(), true));
+                                        drop(events);
                                         return;
                                     }
                                 }
@@ -188,6 +189,7 @@ impl Init {
                                 .entry(id)
                                 .or_insert(Vec::new())
                                 .push(e.context.clone());
+                            drop(contexts);
                             manager.get(&e.action).on_appear(e.clone(), sd).await;
                         }
                         InputEvent::WillDisappear(e) => {
